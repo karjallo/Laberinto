@@ -2,9 +2,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#define MAX 101
 // 0 es muro, 1 es espacio vacio,  2 es camino correcto, 3 es entrada, 4 salida
-void imprimir_laberinto(int tamano, int matriz[][tamano]){
+void imprimir_laberinto(int tamano, int **matriz){
 
     for (int i = 0; i < tamano; i++){
         for (int j = 0; j < tamano; j++){
@@ -25,36 +24,68 @@ void imprimir_laberinto(int tamano, int matriz[][tamano]){
             case 4:
                 printf("X");
                 break;
+            // solo para debug, no deberia suceder
             default:
                 printf("&");
                 break;
+            }
         }
         printf("\n");
-
     }
+}
+
+int **inicializar_laberinto(int tamano){
+    int **matriz = malloc(tamano * sizeof(int *));
+    if (!matriz) {
+        return NULL;
+    }
+    for (int i = 0; i < tamano; i++){
+        matriz[i] = malloc(tamano * sizeof(int));
+        if(!matriz[i]){
+            for (int k = 0; k < tamano; k++)
+            {
+                free(matriz[k]);
+            }
+            free(matriz);
+            return NULL;
+        }
+
+        for (int j = 0; j < tamano; j++){
+            matriz[i][j] = 0;
+        } 
+    }
+    return matriz;
+}
+
+void liberar_laberinto(int tamano, int **matriz){
+    for (int i = 0; i < tamano; i++){
+        free(matriz[i]);
+    }
+    free(matriz);
 }
 
 int main(int argc, char *argv[]) {
     
-    int laberinto[MAX][MAX];
-    int dimension = 21;
-    laberinto[dimension][dimension] = {0};
-    laberinto[1][0] = 
-
+    int dimension = 11;
+    
     if (argc > 1){
         dimension = atoi(argv[1]);
-        if (dimension > MAX || dimension <= 0 || dimension % 2 != 0){
-            printf("opcion invalida %s \n Ingrese un numero impar hasta %d", argv[1], MAX);
+        if (dimension <= 0 || dimension % 2 == 0){
+            printf("opcion invalida %s \n Ingrese un numero impar", argv[1]);
+            return 1;
         }
     }
+    // creamos un puntero que apunta a una lista de punteros
+    // cada puntero apuntaria a una fila de la matriz
+    // inicializamos el laberinto con todos los valores = 0
+    int **laberinto = inicializar_laberinto(dimension);
 
-    for (int i = 0; i < dimension; i++){
-        for (int j = 0; j < dimension; j++){
-            laberinto[i][j] = 0;
-        }
-    }
-
+    // definimos entrada y salida
+    laberinto[1][0] = 3;
+    laberinto[dimension - 2][dimension - 1] = 4;
+    
     imprimir_laberinto(dimension, laberinto);
+    liberar_laberinto(dimension, laberinto);
     return 0;
 }
 
