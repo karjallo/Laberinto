@@ -2,11 +2,12 @@
 #include <stdlib.h>
 #include <time.h>
 
-// 0 es muro, 1 es espacio vacio,  2 es camino correcto, 3 es entrada, 4 salida
-void imprimir_laberinto(int tamano, int **matriz){
 
-    for (int i = 0; i < tamano; i++){
-        for (int j = 0; j < tamano; j++){
+// 0 es muro, 1 es espacio vacio, 2 es camino correcto, 3 es entrada, 4 salida
+void imprimir_laberinto(int dimension, int **matriz){
+
+    for (int i = 0; i < dimension; i++){
+        for (int j = 0; j < dimension; j++){
             switch (matriz[i][j])
             {
             case 0:
@@ -34,40 +35,37 @@ void imprimir_laberinto(int tamano, int **matriz){
     }
 }
 
-int **inicializar_laberinto(int tamano){
-    int **matriz = malloc(tamano * sizeof(int *));
-    if (!matriz) {
-        return NULL;
-    }
-    for (int i = 0; i < tamano; i++){
-        matriz[i] = malloc(tamano * sizeof(int));
-        if(!matriz[i]){
-            for (int k = 0; k < tamano; k++)
-            {
-                free(matriz[k]);
-            }
-            free(matriz);
-            return NULL;
-        }
 
-        for (int j = 0; j < tamano; j++){
-            matriz[i][j] = 0;
-        } 
-    }
-    return matriz;
-}
-
-void liberar_laberinto(int tamano, int **matriz){
-    for (int i = 0; i < tamano; i++){
+void liberar_laberinto(int dimension, int **matriz){
+    for (int i = 0; i < dimension; i++){
         free(matriz[i]);
     }
     free(matriz);
 }
 
+
+int **inicializar_laberinto(int dimension){
+    int **matriz = malloc(dimension * sizeof(int *));
+    if (!matriz) {
+        return NULL;
+    }
+    for (int i = 0; i < dimension; i++){
+        matriz[i] = calloc(dimension, sizeof(int));
+        if(!matriz[i]){
+            liberar_laberinto(i, matriz);
+            return NULL;
+        }
+    }
+    return matriz;
+}
+
+
+
 int main(int argc, char *argv[]) {
-    
+
+    srand(time(NULL));
     int dimension = 11;
-    
+
     if (argc > 1){
         dimension = atoi(argv[1]);
         if (dimension <= 0 || dimension % 2 == 0){
@@ -76,14 +74,22 @@ int main(int argc, char *argv[]) {
         }
     }
     // creamos un puntero que apunta a una lista de punteros
-    // cada puntero apuntaria a una fila de la matriz
+    // cada puntero apuntaria a un array, que representan los valores de una fila de la matriz
     // inicializamos el laberinto con todos los valores = 0
     int **laberinto = inicializar_laberinto(dimension);
+    // si nuestra funcion de inicializar_laberinto nos brinda un pointer NULL, print error
+    if (!laberinto){
+        printf("Error al asignar memoria\n");
+        return 1;
+    }
 
     // definimos entrada y salida
     laberinto[1][0] = 3;
     laberinto[dimension - 2][dimension - 1] = 4;
-    
+
+    // laberinto = generar_laberinto(dimesion, laberinto);
+
+
     imprimir_laberinto(dimension, laberinto);
     liberar_laberinto(dimension, laberinto);
     return 0;
