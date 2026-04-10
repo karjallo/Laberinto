@@ -1,7 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <time.h>
 
+// declaramos constantes siendo i de ambas, las coordenadas correspondientes a
+// 0 = izquierda, 1 = arriba, 2 = derecha, 3 = abajo
+const int MOV_FILA[] = {-2, 0, 2, 0};
+const int MOV_COL[] =  {0, -2, 0 ,2};
 
 // 0 es muro, 1 es espacio vacio, 2 es camino correcto, 3 es entrada, 4 salida
 void imprimir_laberinto(int dimension, int **matriz){
@@ -59,6 +64,23 @@ int **inicializar_laberinto(int dimension){
     return matriz;
 }
 
+// int direccion representa un valor de 0 al 3, que representaria en que direccion
+// se mueve
+bool validar_coordenada(int dimension, int fila, int columna, int direccion){
+    if (fila + MOV_FILA[direccion] < 0 || fila + MOV_FILA[direccion] >= dimension){
+       return false;
+    }
+    if (columna + MOV_COL[direccion] < 0 || columna + MOV_COL[direccion] >= dimension){
+        return false;
+    }
+    return true;
+}
+
+
+int **generar_laberinto(int dimension, int **matriz){
+    // TODO
+    return matriz;
+}
 
 
 int main(int argc, char *argv[]) {
