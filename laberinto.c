@@ -1,42 +1,51 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <time.h>
 
 // declaramos constantes siendo i de ambas, las coordenadas correspondientes a
 // 0 = izquierda, 1 = arriba, 2 = derecha, 3 = abajo
-const int MOV_FILA[] = {-2, 0, 2, 0};
-const int MOV_COL[] =  {0, -2, 0 ,2};
-
 const int DIR_FILA[] = {-1, 0, 1, 0};
 const int DIR_COL[] =  {0, -1, 0, 1};
 
-// 0 es muro, 1 es espacio vacio, 2 es camino correcto, 3 es entrada, 4 salida
-void imprimir_laberinto(int dimension, int **matriz){
+
+typedef struct {
+    int fila;
+    int columna;
+} Coordenada;
+
+// estado 0 pared, 1 camino libre, 2 visitada
+typedef struct{
+    Coordenada padre;
+    int estado;
+    bool es_salida;
+    bool es_entrada;
+    bool es_camino;
+} Nodo;
+
+
+void imprimir_laberinto(int dimension, Nodo **matriz){
 
     for (int i = 0; i < dimension; i++){
         for (int j = 0; j < dimension; j++){
-            switch (matriz[i][j])
-            {
-            case 0:
-                printf("[#]");
-                break;
-            case 1:
-                printf("[ ]");
-                break;
-            case 2:
-                printf("[*]");
-                break;
-            case 3:
-                printf("[O]");
-                break;
-            case 4:
-                printf("[X]");
-                break;
-            // solo para debug, no deberia suceder
-            default:
-                printf("[&]");
-                break;
+            if (matriz[i][j].es_entrada){
+                printf("O ");
+                continue;
+            }
+            else if (matriz[i][j].es_salida){
+                printf("X ");
+                continue;
+            }
+            else if (matriz[i][j].es_camino){
+                printf("* ");
+                continue;
+            }
+            else if (matriz[i][j].estado == 0) {
+                printf("# ");
+                continue;
+            }
+            else{
+                printf(". ");
             }
         }
         printf("\n");
@@ -44,7 +53,7 @@ void imprimir_laberinto(int dimension, int **matriz){
 }
 
 
-void liberar_laberinto(int dimension, int **matriz){
+void liberar_laberinto(int dimension, Nodo **matriz){
     for (int i = 0; i < dimension; i++){
         free(matriz[i]);
     }
@@ -52,13 +61,13 @@ void liberar_laberinto(int dimension, int **matriz){
 }
 
 
-int **inicializar_laberinto(int dimension){
-    int **matriz = malloc(dimension * sizeof(int *));
+Nodo **inicializar_laberinto(int dimension){
+    Nodo **matriz = malloc(dimension * sizeof(Nodo *));
     if (!matriz) {
         return NULL;
     }
     for (int i = 0; i < dimension; i++){
-        matriz[i] = calloc(dimension, sizeof(int));
+        matriz[i] = calloc(dimension, sizeof(Nodo));
         if(!matriz[i]){
             liberar_laberinto(i, matriz);
             return NULL;
@@ -67,21 +76,97 @@ int **inicializar_laberinto(int dimension){
     return matriz;
 }
 
-// int direccion representa un valor de 0 al 3, que representaria en que direccion
-// se mueve
-bool validar_coordenada(int dimension, int fila, int columna, int **matriz){
+
+bool validar_coordenada(int dimension, int fila, int columna, Nodo **matriz){
     if (fila <= 0 || fila >= dimension - 1){
        return false;
     }
     if (columna <= 0 || columna >= dimension - 1){
         return false;
     }
-    if (matriz[fila][columna] != 0)
+    if (matriz[fila][columna].estado != 0)
         return false;
 
     return true;
 }
 
+bool validar_camino(int dimension, int fila, int columna, Nodo **matriz){
+    if (fila < 0 || fila > dimension - 1){
+       return false;
+    }
+    if (columna < 0 || columna > dimension - 1){
+        return false;
+    }
+    if (matriz[fila][columna].estado != 1)
+        return false;
+
+    return true;
+}
+
+bool resolver_bfs(int dimension, Nodo **laberinto){
+    int fila = 1;
+    int columna = 0;
+    laberinto[fila][columna].estado = 2;
+
+    // alocamos memoria para el arreglo de struct coordenada
+    Coordenada *cola = malloc(dimension * dimension * sizeof(Coordenada));
+    if (!cola){
+        printf("Error al alocar memoria\n");
+        return false;
+    }
+
+    // utilizamos inicio y fin para que el array cola se comporte como una cola
+    int inicio = 0;
+    int fin = 0;
+    int nueva_fila;
+    int nueva_columna;
+
+    while(!laberinto[fila][columna].es_salida){
+        for (int i = 0; i < 4; i++){
+            nueva_fila = fila + DIR_FILA[i];
+            nueva_columna = columna + DIR_COL[i];
+
+            if (validar_camino(dimension, nueva_fila, nueva_columna, laberinto)){
+
+                // marcamos como visitado al incluir en la cola para evitar
+                // incluir mas de una vez
+                laberinto[nueva_fila][nueva_columna].estado = 2;
+                cola[fin].fila = nueva_fila;
+                cola[fin].columna = nueva_columna;
+                fin++;
+
+                // agregamos cual fue su padre
+                laberinto[nueva_fila][nueva_columna].padre.fila = fila;
+                laberinto[nueva_fila][nueva_columna].padre.columna = columna;
+            }
+        }
+        if (inicio == fin){
+            free(cola);
+            return false;
+        }
+
+        fila = cola[inicio].fila;
+        columna = cola[inicio].columna;
+        inicio++;
+    }
+
+    free(cola);
+    return true;
+}
+
+void reconstruir_camino(int dimension, Nodo **laberinto){
+    // buscamos la salida para empezar desde ahi
+    int fila = dimension - 2;
+    int columna = dimension - 1;
+
+    while (!laberinto[fila][columna].es_entrada){
+        int nueva_fila = laberinto[fila][columna].padre.fila;
+        int nueva_columna = laberinto[fila][columna].padre.columna;
+        laberinto[fila][columna].es_camino = true;
+        fila = nueva_fila;
+        columna = nueva_columna;
+    }
+}
 
 void fisher_yates(int *direcciones, int n) {
     for (int i = n - 1; i > 0; i--) {
@@ -94,24 +179,31 @@ void fisher_yates(int *direcciones, int n) {
 
 
 // podemos modificar la matriz porque usamos de argumento pointers
-void dfs(int fila, int columna, int dimension, int **matriz){
-    matriz[fila][columna] = 1;
-    int direcciones[] = {0, 1, 2, 3};
-    fisher_yates(direcciones, 4);
+void generar_dfs(int fila, int columna, int dimension, Nodo **matriz){
 
-    for (int i = 0; i < 4; i++){
-        int fila_destino = fila + MOV_FILA[direcciones[i]];
-        int columna_destino = columna + MOV_COL[direcciones[i]];
+    // marcamos como camino libre
+    matriz[fila][columna].estado = 1;
+    int direcciones[] = {0, 1, 2, 3};
+    // solo para evitar pasar valores no hardcodeados
+    int cantidad = sizeof(direcciones) / sizeof(int);
+
+    fisher_yates(direcciones, cantidad);
+
+    for (int i = 0; i < cantidad; i++){
+        int fila_destino = fila + (2 * DIR_FILA[direcciones[i]]);
+        int columna_destino = columna + (2 * DIR_COL[direcciones[i]]);
 
         // si el movimiento es valido, rompemos solo pared intermedia
         // porque la funcion dfs ya rompe la pared de destino
         if (validar_coordenada(dimension, fila_destino, columna_destino, matriz)){
+
             int intermedio_x = (fila + fila_destino) / 2;
             int intermedio_y = (columna + columna_destino) / 2;
 
-            matriz[intermedio_x][intermedio_y] = 1;
+            // marcamos el intermedio como camino libre, no el destino, porque se hace al inicio de la funcion recursiva
+            matriz[intermedio_x][intermedio_y].estado = 1;
 
-            dfs(fila_destino, columna_destino, dimension, matriz);
+            generar_dfs(fila_destino, columna_destino, dimension, matriz);
         }
     }
 }
@@ -136,7 +228,7 @@ int main(int argc, char *argv[]) {
     // creamos un puntero que apunta a una array de punteros
     // cada puntero apuntaria a un array de enteros, que representan los valores de una fila de la matriz
     // inicializamos el laberinto con todos los valores = 0
-    int **laberinto = inicializar_laberinto(dimension);
+    Nodo **laberinto = inicializar_laberinto(dimension);
     // si nuestra funcion de inicializar_laberinto nos brinda un pointer NULL, print error y return
     if (!laberinto){
         printf("Error al asignar memoria\n");
@@ -144,140 +236,48 @@ int main(int argc, char *argv[]) {
     }
 
     // definimos entrada y salida
-    laberinto[1][0] = 3;
-    laberinto[dimension - 2][dimension - 1] = 4;
+    laberinto[1][0].es_entrada = true;
+    laberinto[dimension - 2][dimension - 1].es_salida = true;
 
     // generamos el laberinto, colocamos la posicion 1,1 como partida
     // ya que se encuentra al lado de la entrada
-    dfs(1, 1, dimension, laberinto);
+    generar_dfs(1, 1, dimension, laberinto);
     printf("se genero el siguiente laberinto\n");
     if(argc != 3){
         imprimir_laberinto(dimension, laberinto);
     }
 
-    // resolver laberinto
-    // Creamos una matriz donde 0 es no visitado, 1 es visitado y 2 es salida
-    // utilizamos 0 como no visitado asi tambien podemos usar validar_coordenada
-    int **visitados = inicializar_laberinto(dimension);
+    // colocamos que la salida tenga el estado de visitado, osino no
+    // funcionara nuestra validar_camino
+    laberinto[dimension - 2][dimension - 1].estado = 1;
+    laberinto[1][0].estado = 1;
 
-    int fila = 1;
-    int columna = 0;
-    // definimos que la entrada ya fue visitada porque no hay diferencia
-    visitados[fila][columna] = 1;
+    // solucionar laberinto
+    bool solucion = resolver_bfs(dimension, laberinto);
 
-    // alocamos memoria para la lista de cola_fila y cola_columna
-    int *cola_fila = malloc(dimension * dimension * sizeof(int));
-    if (!cola_fila){
-        printf("Error al alocar memoria");
+    if (!solucion){
+        printf("no se encontro solucion\n");
         return 1;
     }
-    int *cola_columna = malloc (dimension * dimension * sizeof(int));
-    if (!cola_columna){
-        printf("Error al alocar memoria");
-        return 1;
-    }
-    int inicio = 0;
-    int fin = 0;
-
-    // al usar como una pila aumento padres, y voy restando a medida que utilizo, siendo padres-1 mi indice
-    // si el iterador padres < 0, es porque se llego al ultimo padre
-    int *padres_fila = malloc(dimension * dimension * sizeof(int));
-    if (!padres_fila){
-        printf("Error al alocar memoria");
-        return 1;
-    }
-    int *padres_columna = malloc(dimension * dimension * sizeof(int));
-    if (!padres_columna){
-        printf("Error al alocar memoria");
-        return 1;
-    }
-    // padres es la cantidad de padres que existen, el indice seria padres - 1
-    int padres = 0;
-
-
-
-    while(laberinto[fila][columna] != 4){
-    // iteramos sobre cada vecino y vemos si no esta visitado y se
-    // encuentra en el rango de la matriz,
-        for (int i = 0; i < 4; i++){
-            int nueva_fila = fila + DIR_FILA[i];
-            int nueva_columna  = columna + DIR_COL[i];
-            if (nueva_fila < 0 || nueva_fila >= dimension ||
-                nueva_columna < 0 || nueva_columna >= dimension ||
-                laberinto[nueva_fila][nueva_columna] == 0 ||
-                visitados[nueva_fila][nueva_columna] != 0){
-                continue;
-            }
-            else{
-
-                // marcamos como visitado
-                visitados[nueva_fila][nueva_columna] = 1;
-                // encolamos los caminos posibles
-                cola_fila[fin] = nueva_fila;
-                cola_columna[fin] = nueva_columna;
-                fin++;
-                // debug
-                // printf("iterando en posicion (%d,%d), con el iterador %d \n", nueva_fila, nueva_columna, i);
-            }
-
-            // despues de cada iteracion agregamos como padre
-            // por como escribimos el codigo la casilla de salida no ingresara a la lista padres
-            padres_fila[padres] = fila;
-            padres_columna[padres] = columna;
-            padres++;
-
-        }
-        if (inicio == fin){
-            printf("no tiene solucion\n");
-            break;
-        }
-
-        fila = cola_fila[inicio];
-        columna = cola_columna[inicio];
-        inicio++;
-
+    else{
+        //reconstruir camino
+        reconstruir_camino(dimension, laberinto);
     }
 
-    // para reconstruir
-    // iteramos sobre la pila de
-    // como padres es la cantidad de elementos que tiene la lista, para usarlo como indice, disminuimos un numero
-    padres--;
-
-    while ( padres >= 0){
-        if( abs(padres_columna[padres] - columna) + abs(padres_fila[padres] - fila) == 1){
-            fila = padres_fila[padres];
-            columna = padres_columna[padres];
-            laberinto[fila][columna] = 2;
-            padres--;
-        }
-        else{
-            padres--;
-        }
-    }
-    // como la entrada hacemos que sea camino correcto, volvemos a cambiarlo
-    laberinto[1][0] = 3;
 
     // calculamos el tiempo
     clock_t tiempo_fin = clock();
-    // clock nos brinda los ticks del procesador, por esa razon debemos
-    // divdir entre CLOCKS_PER_SEC
     double tiempo = (double)(tiempo_fin - tiempo_inicio) / CLOCKS_PER_SEC;
+
     // Imprimir mensaje de salida
     printf(" la solucion del laberinto es:\n");
-
-
     if(argc != 3){
         imprimir_laberinto(dimension, laberinto);
     }
-
     printf("el programa se ejecuto: %.4f segundos \n", tiempo);
-    liberar_laberinto(dimension, laberinto);
-    liberar_laberinto(dimension, visitados);
-    free(padres_fila);
-    free(padres_columna);
-    free(cola_fila);
-    free(cola_columna);
 
+    // liberar memoria alocada
+    liberar_laberinto(dimension, laberinto);
 
     return 0;
 }
