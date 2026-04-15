@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <time.h>
 
 // declaramos constantes siendo i de ambas, las coordenadas correspondientes a
@@ -8,20 +9,36 @@
 const int DIR_FILA[] = {-1, 0, 1, 0};
 const int DIR_COL[] =  {0, -1, 0, 1};
 
-
 typedef struct {
     int fila;
     int columna;
 } Coordenada;
 
-// estado 0 pared, 1 camino libre, 2 visitada
 typedef struct{
     Coordenada padre;
-    int estado;
+    bool es_pared;
+    bool visitado;
     bool es_salida;
     bool es_entrada;
     bool es_camino;
 } Nodo;
+
+
+void imprimir_uso(char *nombre_programa){
+    printf("Uso: %s [N] [opciones]\n\n", nombre_programa);
+    printf("Argumentos:\n");
+    printf("  N              dimension del laberinto (impar, mayor a 3, por defecto 11)\n\n");
+    printf("Opciones:\n");
+    printf("  --silent       no muestra el laberinto generado ni la solucion\n");
+    printf("  --multiple     genera mas de un posible camino, por defecto false\n");
+    printf("  --help         muestra este mensaje\n");
+    printf("Ejemplos:\n");
+    printf("  %s\n", nombre_programa);
+    printf("  %s 21\n", nombre_programa);
+    printf("  %s 31 --multiple\n", nombre_programa);
+    printf("  %s 13 --silent\n", nombre_programa);
+    printf("  %s 17 --silent --multiple\n", nombre_programa);
+}
 
 
 void imprimir_laberinto(int dimension, Nodo **matriz){
@@ -40,7 +57,7 @@ void imprimir_laberinto(int dimension, Nodo **matriz){
                 printf("* ");
                 continue;
             }
-            else if (matriz[i][j].estado == 0) {
+            else if (matriz[i][j].es_pared) {
                 printf("# ");
                 continue;
             }
@@ -66,11 +83,18 @@ Nodo **inicializar_laberinto(int dimension){
     if (!matriz) {
         return NULL;
     }
+    // calloc inicia los valores int = 0, bool = false, *p = NULL
     for (int i = 0; i < dimension; i++){
         matriz[i] = calloc(dimension, sizeof(Nodo));
         if(!matriz[i]){
             liberar_laberinto(i, matriz);
             return NULL;
+        }
+    }
+    // hacemos que todo sea pared
+    for (int i = 0; i < dimension; i++){
+        for(int j = 0; j < dimension; j++){
+            matriz[i][j].es_pared = true;
         }
     }
     return matriz;
@@ -81,32 +105,39 @@ bool validar_coordenada(int dimension, int fila, int columna, Nodo **matriz){
     if (fila <= 0 || fila >= dimension - 1){
        return false;
     }
-    if (columna <= 0 || columna >= dimension - 1){
+    else if (columna <= 0 || columna >= dimension - 1){
         return false;
     }
-    if (matriz[fila][columna].estado != 0)
+    else if (!matriz[fila][columna].es_pared){
         return false;
-
-    return true;
+    }
+    else {
+        return true;
+    }
 }
 
 bool validar_camino(int dimension, int fila, int columna, Nodo **matriz){
     if (fila < 0 || fila > dimension - 1){
        return false;
     }
-    if (columna < 0 || columna > dimension - 1){
+    else if (columna < 0 || columna > dimension - 1){
         return false;
     }
-    if (matriz[fila][columna].estado != 1)
+    else if (matriz[fila][columna].es_pared){
         return false;
-
-    return true;
+    }
+    else if (matriz[fila][columna].visitado){
+        return false;
+    }
+    else {
+        return true;
+    }
 }
 
 bool resolver_bfs(int dimension, Nodo **laberinto){
     int fila = 1;
     int columna = 0;
-    laberinto[fila][columna].estado = 2;
+    laberinto[fila][columna].visitado = true;
 
     // alocamos memoria para el arreglo de struct coordenada
     Coordenada *cola = malloc(dimension * dimension * sizeof(Coordenada));
@@ -130,7 +161,7 @@ bool resolver_bfs(int dimension, Nodo **laberinto){
 
                 // marcamos como visitado al incluir en la cola para evitar
                 // incluir mas de una vez
-                laberinto[nueva_fila][nueva_columna].estado = 2;
+                laberinto[nueva_fila][nueva_columna].visitado = true;
                 cola[fin].fila = nueva_fila;
                 cola[fin].columna = nueva_columna;
                 fin++;
@@ -153,6 +184,7 @@ bool resolver_bfs(int dimension, Nodo **laberinto){
     free(cola);
     return true;
 }
+
 
 void reconstruir_camino(int dimension, Nodo **laberinto){
     // buscamos la salida para empezar desde ahi
@@ -182,7 +214,7 @@ void fisher_yates(int *direcciones, int n) {
 void generar_dfs(int fila, int columna, int dimension, Nodo **matriz){
 
     // marcamos como camino libre
-    matriz[fila][columna].estado = 1;
+    matriz[fila][columna].es_pared = false;
     int direcciones[] = {0, 1, 2, 3};
     // solo para evitar pasar valores no hardcodeados
     int cantidad = sizeof(direcciones) / sizeof(int);
@@ -201,7 +233,7 @@ void generar_dfs(int fila, int columna, int dimension, Nodo **matriz){
             int intermedio_y = (columna + columna_destino) / 2;
 
             // marcamos el intermedio como camino libre, no el destino, porque se hace al inicio de la funcion recursiva
-            matriz[intermedio_x][intermedio_y].estado = 1;
+            matriz[intermedio_x][intermedio_y].es_pared = false;
 
             generar_dfs(fila_destino, columna_destino, dimension, matriz);
         }
@@ -211,25 +243,37 @@ void generar_dfs(int fila, int columna, int dimension, Nodo **matriz){
 
 int main(int argc, char *argv[]) {
 
+    //inicializamos calculo de ticks
     clock_t tiempo_inicio = clock();
     srand(time(NULL));
     int dimension = 11;
+    bool silent = false;
+    bool multiple = false;
 
     // defino que el minimo de dimension sea 3, porque mas adelante colocamos (1,0)
     // y (n-1, n-2) como entrada y salida, para que eso sea viable el menor valor tiene
     // que ser 3
-    if (argc > 1){
-        dimension = atoi(argv[1]);
-        if (dimension < 3 || dimension % 2 == 0){
-            printf("opcion invalida %s \n Ingrese un numero impar mayor a 2", argv[1]);
+    for ( int i = 1; i < argc; i++){
+        if (strcmp(argv[i], "--silent") == 0){
+            silent = true;
+        }
+        else if (strcmp(argv[i], "--multiple") == 0){
+            multiple = true;
+        }
+        else if (strcmp(argv[i], "--help") == 0){
+            imprimir_uso(argv[0]);
             return 1;
         }
+        else {
+            dimension = atoi(argv[i]);
+            if (dimension < 3 || dimension % 2 == 0){
+                printf("opcion invalida: %s\n", argv[i]);
+                imprimir_uso(argv[0]);
+                return 1;
+            }
+        }
     }
-    // creamos un puntero que apunta a una array de punteros
-    // cada puntero apuntaria a un array de enteros, que representan los valores de una fila de la matriz
-    // inicializamos el laberinto con todos los valores = 0
     Nodo **laberinto = inicializar_laberinto(dimension);
-    // si nuestra funcion de inicializar_laberinto nos brinda un pointer NULL, print error y return
     if (!laberinto){
         printf("Error al asignar memoria\n");
         return 1;
@@ -240,17 +284,15 @@ int main(int argc, char *argv[]) {
     laberinto[dimension - 2][dimension - 1].es_salida = true;
 
     // generamos el laberinto, colocamos la posicion 1,1 como partida
-    // ya que se encuentra al lado de la entrada
     generar_dfs(1, 1, dimension, laberinto);
     printf("se genero el siguiente laberinto\n");
-    if(argc != 3){
+    if(!silent){
         imprimir_laberinto(dimension, laberinto);
     }
 
-    // colocamos que la salida tenga el estado de visitado, osino no
-    // funcionara nuestra validar_camino
-    laberinto[dimension - 2][dimension - 1].estado = 1;
-    laberinto[1][0].estado = 1;
+    // como en la generacion no visitamos la entrada y la salida, destruimos pared
+    laberinto[dimension - 2][dimension - 1].es_pared = false;
+    laberinto[1][0].es_pared = false;
 
     // solucionar laberinto
     bool solucion = resolver_bfs(dimension, laberinto);
@@ -260,20 +302,18 @@ int main(int argc, char *argv[]) {
         return 1;
     }
     else{
-        //reconstruir camino
+        //reconstruir camino solo si se soluciono
         reconstruir_camino(dimension, laberinto);
     }
 
 
-    // calculamos el tiempo
-    clock_t tiempo_fin = clock();
-    double tiempo = (double)(tiempo_fin - tiempo_inicio) / CLOCKS_PER_SEC;
-
     // Imprimir mensaje de salida
     printf(" la solucion del laberinto es:\n");
-    if(argc != 3){
+    if(!silent){
         imprimir_laberinto(dimension, laberinto);
     }
+    clock_t tiempo_fin = clock();
+    double tiempo = (double)(tiempo_fin - tiempo_inicio) / CLOCKS_PER_SEC;
     printf("el programa se ejecuto: %.4f segundos \n", tiempo);
 
     // liberar memoria alocada
