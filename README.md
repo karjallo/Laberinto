@@ -11,8 +11,7 @@ Utilice el algoritmo BFS debido a que te asegura encontrar el camino mas corto
 2. Los limitantes a la hora de utilizar funciones recursivas, por ejemplo ya que utilizo c para resolver, como primeramente tenia la funcion dfs de forma recursiva, tenia un desbordamiento de pila a partir de numeros 1201 aproximadamente
 
 ## Que haria diferente la proxima vez?
-1. Utilizar structs a la primera, por intentar no complicarme al principio, utilize varias matrices para poder tener un seguimiento de distintos valores, llegando asi a tener 4 matrices:
+1. Utilizar structs a la primera, por intentar no complicarme al principio, utilize varias matrices para poder tener un seguimiento de distintos valores, llegando asi a tener 4 matrices, haciendo que el codigo sea mucho mas dificil de entender
     - Una para imprimir, donde se registraban paredes, espacios, entrada y salida
     - Otra para llevar el seguimiento de visitados y no visitados
     - Otras dos para guardar las coordenadas de los padres
-Haciendo que el codigo sea mucho mas dificil de entender
