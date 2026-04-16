@@ -323,18 +323,19 @@ int main(int argc, char *argv[]) {
     }
     else{
         //reconstruir camino solo si se soluciono
+        printf("se soluciono el laberinto\n");
         reconstruir_camino(dimension, laberinto);
     }
 
 
     // Imprimir mensaje de salida
-    printf(" la solucion del laberinto es:\n");
     if(!silent){
+        printf(" la solucion del laberinto es:\n");
         imprimir_laberinto(dimension, laberinto);
     }
     clock_t tiempo_fin = clock();
     double tiempo = (double)(tiempo_fin - tiempo_inicio) / CLOCKS_PER_SEC;
-    printf("el programa se ejecuto en: %.4f segundos \n", tiempo);
+    printf("el programa se ejecuto en: %.5f segundos \n", tiempo);
 
     // liberar memoria alocada
     liberar_laberinto(dimension, laberinto);
