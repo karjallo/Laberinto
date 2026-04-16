@@ -303,8 +303,8 @@ int main(int argc, char *argv[]) {
 
     // generamos el laberinto, colocamos la posicion 1,1 como partida
     generar_dfs(1, 1, dimension, laberinto);
-    printf("se genero el siguiente laberinto\n");
     if(!silent){
+        printf("se genero el siguiente laberinto\n");
         imprimir_laberinto(dimension, laberinto);
     }
 
@@ -334,7 +334,7 @@ int main(int argc, char *argv[]) {
     }
     clock_t tiempo_fin = clock();
     double tiempo = (double)(tiempo_fin - tiempo_inicio) / CLOCKS_PER_SEC;
-    printf("el programa se ejecuto: %.4f segundos \n", tiempo);
+    printf("el programa se ejecuto en: %.4f segundos \n", tiempo);
 
     // liberar memoria alocada
     liberar_laberinto(dimension, laberinto);
