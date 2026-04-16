@@ -116,6 +116,7 @@ bool validar_coordenada(int dimension, int fila, int columna, Nodo **matriz){
     }
 }
 
+
 bool validar_camino(int dimension, int fila, int columna, Nodo **matriz){
     if (fila < 0 || fila > dimension - 1){
        return false;
@@ -134,71 +135,6 @@ bool validar_camino(int dimension, int fila, int columna, Nodo **matriz){
     }
 }
 
-bool resolver_bfs(int dimension, Nodo **laberinto){
-    int fila = 1;
-    int columna = 0;
-    laberinto[fila][columna].visitado = true;
-
-    // alocamos memoria para el arreglo de struct coordenada
-    Coordenada *cola = malloc(dimension * dimension * sizeof(Coordenada));
-    if (!cola){
-        printf("Error al alocar memoria\n");
-        return false;
-    }
-
-    // utilizamos inicio y fin para que el array cola se comporte como una cola
-    int inicio = 0;
-    int fin = 0;
-    int nueva_fila;
-    int nueva_columna;
-
-    while(!laberinto[fila][columna].es_salida){
-        for (int i = 0; i < 4; i++){
-            nueva_fila = fila + DIR_FILA[i];
-            nueva_columna = columna + DIR_COL[i];
-
-            if (validar_camino(dimension, nueva_fila, nueva_columna, laberinto)){
-
-                // marcamos como visitado al incluir en la cola para evitar
-                // incluir mas de una vez
-                laberinto[nueva_fila][nueva_columna].visitado = true;
-                cola[fin].fila = nueva_fila;
-                cola[fin].columna = nueva_columna;
-                fin++;
-
-                // agregamos cual fue su padre
-                laberinto[nueva_fila][nueva_columna].padre.fila = fila;
-                laberinto[nueva_fila][nueva_columna].padre.columna = columna;
-            }
-        }
-        if (inicio == fin){
-            free(cola);
-            return false;
-        }
-
-        fila = cola[inicio].fila;
-        columna = cola[inicio].columna;
-        inicio++;
-    }
-
-    free(cola);
-    return true;
-}
-
-
-void reconstruir_camino(int dimension, Nodo **laberinto){
-    // buscamos la salida para empezar desde ahi
-    int fila = dimension - 2;
-    int columna = dimension - 1;
-
-    while (!laberinto[fila][columna].es_entrada){
-        int nueva_fila = laberinto[fila][columna].padre.fila;
-        int nueva_columna = laberinto[fila][columna].padre.columna;
-        laberinto[fila][columna].es_camino = true;
-        fila = nueva_fila;
-        columna = nueva_columna;
-    }
-}
 
 void fisher_yates(int *direcciones, int n) {
     for (int i = n - 1; i > 0; i--) {
@@ -241,6 +177,73 @@ void generar_dfs(int fila, int columna, int dimension, Nodo **matriz){
 }
 
 
+bool resolver_bfs(int dimension, Nodo **matriz){
+    int fila = 1;
+    int columna = 0;
+    matriz[fila][columna].visitado = true;
+
+    // alocamos memoria para el arreglo de struct coordenada
+    Coordenada *cola = malloc(dimension * dimension * sizeof(Coordenada));
+    if (!cola){
+        printf("Error al alocar memoria\n");
+        return false;
+    }
+
+    // utilizamos inicio y fin para que el array cola se comporte como una cola
+    int inicio = 0;
+    int fin = 0;
+    int nueva_fila;
+    int nueva_columna;
+
+    while(!matriz[fila][columna].es_salida){
+        for (int i = 0; i < 4; i++){
+            nueva_fila = fila + DIR_FILA[i];
+            nueva_columna = columna + DIR_COL[i];
+
+            if (validar_camino(dimension, nueva_fila, nueva_columna, matriz)){
+
+                // marcamos como visitado al incluir en la cola
+                matriz[nueva_fila][nueva_columna].visitado = true;
+                cola[fin].fila = nueva_fila;
+                cola[fin].columna = nueva_columna;
+                fin++;
+
+                // agregamos cual fue su padre
+                matriz[nueva_fila][nueva_columna].padre.fila = fila;
+                matriz[nueva_fila][nueva_columna].padre.columna = columna;
+            }
+        }
+        if (inicio == fin){
+            free(cola);
+            return false;
+        }
+
+        fila = cola[inicio].fila;
+        columna = cola[inicio].columna;
+        inicio++;
+    }
+
+    free(cola);
+    return true;
+}
+
+
+void reconstruir_camino(int dimension, Nodo **matriz){
+    int fila = dimension - 2;
+    int columna = dimension - 1;
+    int nueva_fila;
+    int nueva_columna;
+
+    while (!matriz[fila][columna].es_entrada){
+        nueva_fila = matriz[fila][columna].padre.fila;
+        nueva_columna = matriz[fila][columna].padre.columna;
+        matriz[fila][columna].es_camino = true;
+        fila = nueva_fila;
+        columna = nueva_columna;
+    }
+}
+
+
 int main(int argc, char *argv[]) {
 
     //inicializamos calculo de ticks
@@ -273,6 +276,7 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+    // creamos el laberinto
     Nodo **laberinto = inicializar_laberinto(dimension);
     if (!laberinto){
         printf("Error al asignar memoria\n");
