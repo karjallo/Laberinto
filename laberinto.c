@@ -5,7 +5,7 @@
 #include <time.h>
 
 // declaramos constantes siendo i de ambas, las coordenadas correspondientes a
-// 0 = izquierda, 1 = arriba, 2 = derecha, 3 = abajo
+// 0 = arriba, 1 = izquierda, 2 = abajo, 3 = derecha
 const int DIR_FILA[] = {-1, 0, 1, 0};
 const int DIR_COL[] =  {0, -1, 0, 1};
 
@@ -146,13 +146,12 @@ void fisher_yates(int *direcciones, int n) {
 }
 
 
-// podemos modificar la matriz porque usamos de argumento pointers
 void generar_dfs(int fila, int columna, int dimension, Nodo **matriz){
 
     // marcamos como camino libre
     matriz[fila][columna].es_pared = false;
     int direcciones[] = {0, 1, 2, 3};
-    // solo para evitar pasar valores no hardcodeados
+    // solo para evitar pasar valores hardcodeados
     int cantidad = sizeof(direcciones) / sizeof(int);
 
     fisher_yates(direcciones, cantidad);
@@ -162,15 +161,12 @@ void generar_dfs(int fila, int columna, int dimension, Nodo **matriz){
         int columna_destino = columna + (2 * DIR_COL[direcciones[i]]);
 
         // si el movimiento es valido, rompemos solo pared intermedia
-        // porque la funcion dfs ya rompe la pared de destino
+        // porque la funcion dfs ya rompe la pared de destino al inicio
         if (validar_coordenada(dimension, fila_destino, columna_destino, matriz)){
 
             int intermedio_x = (fila + fila_destino) / 2;
             int intermedio_y = (columna + columna_destino) / 2;
-
-            // marcamos el intermedio como camino libre, no el destino, porque se hace al inicio de la funcion recursiva
             matriz[intermedio_x][intermedio_y].es_pared = false;
-
             generar_dfs(fila_destino, columna_destino, dimension, matriz);
         }
     }
@@ -198,7 +194,6 @@ bool resolver_bfs(int dimension, Nodo **matriz){
     int columna = 0;
     matriz[fila][columna].visitado = true;
 
-    // alocamos memoria para el arreglo de struct coordenada
     Coordenada *cola = malloc(dimension * dimension * sizeof(Coordenada));
     if (!cola){
         printf("Error al alocar memoria\n");
@@ -292,7 +287,7 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-    // creamos el laberinto
+    // creamos el laberinto como una matriz llena de paredes
     Nodo **laberinto = inicializar_laberinto(dimension);
     if (!laberinto){
         printf("Error al asignar memoria\n");
@@ -301,7 +296,10 @@ int main(int argc, char *argv[]) {
 
     // definimos entrada y salida
     laberinto[1][0].es_entrada = true;
+    laberinto[1][0].es_pared = false;
     laberinto[dimension - 2][dimension - 1].es_salida = true;
+    laberinto[dimension - 2][dimension - 1].es_pared = false;
+
 
     // generamos el laberinto, colocamos la posicion 1,1 como partida
     generar_dfs(1, 1, dimension, laberinto);
@@ -311,14 +309,10 @@ int main(int argc, char *argv[]) {
     }
 
     // destruimos paredes aleatorias para asegurar posibles caminos
-    // con un 25% chance
+    // con un 25% de probabilidad
     if (multiple){
         destruir_paredes(dimension, laberinto);
     }
-
-    // como en la generacion no visitamos la entrada y la salida, destruimos pared
-    laberinto[dimension - 2][dimension - 1].es_pared = false;
-    laberinto[1][0].es_pared = false;
 
     // solucionar laberinto
     bool solucion = resolver_bfs(dimension, laberinto);
