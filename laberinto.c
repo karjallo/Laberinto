@@ -177,6 +177,22 @@ void generar_dfs(int fila, int columna, int dimension, Nodo **matriz){
 }
 
 
+void destruir_paredes(int dimension, Nodo **matriz){
+    int numero;
+    for (int i = 1; i < dimension - 1; i++){
+        for (int j = 1; j < dimension - 1; j++){
+            if (!matriz[i][j].es_pared){
+                continue;
+            }
+            numero = rand() % 4;
+            if (numero == 0){
+                matriz[i][j].es_pared = false;
+            }
+        }
+    }
+}
+
+
 bool resolver_bfs(int dimension, Nodo **matriz){
     int fila = 1;
     int columna = 0;
@@ -292,6 +308,12 @@ int main(int argc, char *argv[]) {
     printf("se genero el siguiente laberinto\n");
     if(!silent){
         imprimir_laberinto(dimension, laberinto);
+    }
+
+    // destruimos paredes aleatorias para asegurar posibles caminos
+    // con un 25% chance
+    if (multiple){
+        destruir_paredes(dimension, laberinto);
     }
 
     // como en la generacion no visitamos la entrada y la salida, destruimos pared
